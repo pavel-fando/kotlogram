@@ -479,7 +479,7 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     }
 
     @Override
-    public TLAbsContacts contactsGetContacts(String hash) throws RpcErrorException, IOException {
+    public TLAbsContacts contactsGetContacts(long hash) throws RpcErrorException, IOException {
         return (TLAbsContacts) executeRpcQuery(new TLRequestContactsGetContacts(hash));
     }
 
@@ -617,7 +617,7 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     }
 
     @Override
-    public TLAbsUpdates messagesAddChatUser(int chatId, TLAbsInputUser userId, int fwdLimit) throws RpcErrorException, IOException {
+    public TLAbsUpdates messagesAddChatUser(long chatId, TLAbsInputUser userId, int fwdLimit) throws RpcErrorException, IOException {
         return (TLAbsUpdates) executeRpcQuery(new TLRequestMessagesAddChatUser(chatId, userId, fwdLimit));
     }
 
@@ -637,7 +637,7 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     }
 
     @Override
-    public TLAbsUpdates messagesDeleteChatUser(int chatId, TLAbsInputUser userId) throws RpcErrorException, IOException {
+    public TLAbsUpdates messagesDeleteChatUser(long chatId, TLAbsInputUser userId) throws RpcErrorException, IOException {
         return (TLAbsUpdates) executeRpcQuery(new TLRequestMessagesDeleteChatUser(chatId, userId));
     }
 
@@ -657,7 +657,7 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     }
 
     @Override
-    public TLBool messagesEditChatAdmin(int chatId, TLAbsInputUser userId, boolean isAdmin) throws RpcErrorException, IOException {
+    public TLBool messagesEditChatAdmin(long chatId, TLAbsInputUser userId, boolean isAdmin) throws RpcErrorException, IOException {
         return (TLBool) executeRpcQuery(new TLRequestMessagesEditChatAdmin(chatId, userId, isAdmin));
     }
 
@@ -684,8 +684,8 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     }
 
     @Override
-    public TLAbsExportedChatInvite messagesExportChatInvite(int chatId) throws RpcErrorException, IOException {
-        return (TLAbsExportedChatInvite) executeRpcQuery(new TLRequestMessagesExportChatInvite(chatId));
+    public TLAbsExportedChatInvite messagesExportChatInvite(TLAbsInputPeer peer) throws RpcErrorException, IOException {
+        return (TLAbsExportedChatInvite) executeRpcQuery(new TLRequestMessagesExportChatInvite(false, peer, null, null));
     }
 
     @Override
@@ -774,7 +774,7 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     @Override
     public TLAbsMessages messagesGetHistory(TLAbsInputPeer peer, int offsetId, int offsetDate, int addOffset, int limit, int maxId, int minId) throws RpcErrorException, IOException {
         return (TLAbsMessages) executeRpcQuery(
-                new TLRequestMessagesGetHistory(peer, offsetId, offsetDate, addOffset, limit, maxId, minId));
+                new TLRequestMessagesGetHistory(peer, offsetId, offsetDate, addOffset, limit, maxId, minId, 0));
     }
 
     @Override

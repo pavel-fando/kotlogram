@@ -97,7 +97,8 @@ interface TelegramClient : TelegramApi {
     fun messagesSendMessage(peer: TLAbsInputPeer, message: String, randomId: Long): TLAbsUpdates?
 
     /** Convenience method to downloadSync an user profile photo */
-    @Throws(RpcErrorException::class, IOException::class)
+    //TODO: fix me. TLUserPhoto doesn't store photo location anymore
+    /*@Throws(RpcErrorException::class, IOException::class)
     fun getUserPhoto(user: TLAbsUser, big: Boolean = true): TLFile? {
         val userPhoto = when (user) {
             is TLUser -> user.photo
@@ -116,12 +117,14 @@ interface TelegramClient : TelegramApi {
         return executeRpcQuery(request, photoLocation.dcId) as? TLFile
                 // TODO: handle CDN
                 ?: throw IOException("Unhandled CDN redirection")
-    }
+    }*/
 
     /** Convenience method to downloadSync a chat photo */
     @Throws(RpcErrorException::class, IOException::class)
     fun getChatPhoto(chat: TLAbsChat, big: Boolean = true): TLFile? {
-        val chatPhoto = when (chat) {
+        //TODO: add request request to get photo oject by its id
+        return null
+        /*val chatPhoto = when (chat) {
             is TLChat -> chat.photo
             is TLChannel -> chat.photo
             is TLChatEmpty, is TLChatForbidden -> null
@@ -129,7 +132,7 @@ interface TelegramClient : TelegramApi {
         } ?: return null
 
         val photoLocation = (when (chatPhoto) {
-            is TLChatPhoto -> if (big) chatPhoto.photoBig else chatPhoto.photoSmall
+            is TLChatPhoto -> if (big) chatPhoto else chatPhoto.photoSmall
             else -> null
         } ?: return null) as? TLFileLocation ?: return null
 
@@ -138,7 +141,7 @@ interface TelegramClient : TelegramApi {
         val request = TLRequestUploadGetFile(inputLocation, 0, 0)
         return executeRpcQuery(request, photoLocation.dcId)as? TLFile
                 // TODO: handle CDN
-                ?: throw IOException("Unhandled CDN redirection")
+                ?: throw IOException("Unhandled CDN redirection")*/
     }
 
     /** Convenience method to downloadSync a channel photo */

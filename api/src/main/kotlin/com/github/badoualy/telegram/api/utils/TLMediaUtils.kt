@@ -40,14 +40,15 @@ fun TLAbsMessageMedia.getAbsMediaThumbnailInput() = when (this) {
 fun TLMessageMediaDocument.getMediaInput() = when (document) {
     is TLDocument -> {
         val document = document as TLDocument
-        val inputFileLocation = InputFileLocation(TLInputDocumentFileLocation(document.id, document.accessHash, document.version), document.dcId)
+        //TODO: fix entity if method will be required
+        val inputFileLocation = InputFileLocation(TLInputDocumentFileLocation(document.id, document.accessHash, 0), document.dcId)
         MediaInput(inputFileLocation, document.size, document.mimeType)
     }
     else -> null
 }
 
 fun TLMessageMediaDocument.getMediaThumbnailInput() = when (document) {
-    is TLDocument -> (document as TLDocument).thumb.getMediaInput()
+    is TLDocument -> (document as TLDocument).thumbs.get(0).getMediaInput()
     else -> null
 }
 
@@ -81,7 +82,9 @@ fun TLMessageMediaWebPage.getMediaThumbnailInput() = when (webpage) {
     else -> null
 }
 
-fun TLAbsPhotoSize?.getMediaInput() = when (this) {
+//TODO: fix getting file location by file id
+fun TLAbsPhotoSize?.getMediaInput() = null
+/*when (this) {
     is TLPhotoSize -> {
         val inputFileLocation = location.toInputFileLocation()
         if (inputFileLocation != null)
@@ -96,6 +99,7 @@ fun TLAbsPhotoSize?.getMediaInput() = when (this) {
     }
     else -> null
 }
+ */
 
 fun Collection<TLAbsPhotoSize>?.getMaxSize(): TLAbsPhotoSize? {
     if (this == null || isEmpty())

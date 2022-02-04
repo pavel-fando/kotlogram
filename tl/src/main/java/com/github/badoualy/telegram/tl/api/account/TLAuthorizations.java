@@ -19,40 +19,34 @@ import static com.github.badoualy.telegram.tl.TLObjectUtils.SIZE_INT32;
  */
 public class TLAuthorizations extends TLObject {
 
-    public static final int CONSTRUCTOR_ID = 0x4bff8ea0;
+    public static final int CONSTRUCTOR_ID = 0x1250abde;
 
     protected TLVector<TLAuthorization> authorizations;
 
-    protected int authorizationTtlDays;
-
-    private final String _constructor = "account.authorizations#4bff8ea0";
+    private final String _constructor = "account.authorizations#1250abde";
 
     public TLAuthorizations() {
     }
 
     public TLAuthorizations(TLVector<TLAuthorization> authorizations, Integer authorizationTtlDays) {
         this.authorizations = authorizations;
-        this.authorizationTtlDays = authorizationTtlDays;
     }
 
     @Override
     public void serializeBody(OutputStream stream) throws IOException {
         writeTLVector(authorizations, stream);
-        writeInt(authorizationTtlDays, stream);
     }
 
     @Override
     @SuppressWarnings({"unchecked", "SimplifiableConditionalExpression"})
     public void deserializeBody(InputStream stream, TLContext context) throws IOException {
         authorizations = readTLVector(stream, context);
-        authorizationTtlDays = readInt(stream);
     }
 
     @Override
     public int computeSerializedSize() {
         int size = SIZE_CONSTRUCTOR_ID;
         size += authorizations.computeSerializedSize();
-        size += SIZE_INT32;
         return size;
     }
 
@@ -72,13 +66,5 @@ public class TLAuthorizations extends TLObject {
 
     public void setAuthorizations(TLVector<TLAuthorization> authorizations) {
         this.authorizations = authorizations;
-    }
-
-    public int getAuthorizationTtlDays() {
-        return authorizationTtlDays;
-    }
-
-    public void setAuthorizationTtlDays(int authorizationTtlDays) {
-        this.authorizationTtlDays = authorizationTtlDays;
     }
 }

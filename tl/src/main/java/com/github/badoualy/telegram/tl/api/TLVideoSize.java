@@ -1,28 +1,24 @@
 package com.github.badoualy.telegram.tl.api;
 
 import com.github.badoualy.telegram.tl.TLContext;
+import com.github.badoualy.telegram.tl.core.TLObject;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import static com.github.badoualy.telegram.tl.StreamUtils.*;
 import static com.github.badoualy.telegram.tl.StreamUtils.readInt;
-import static com.github.badoualy.telegram.tl.StreamUtils.readTLObject;
-import static com.github.badoualy.telegram.tl.StreamUtils.readTLString;
-import static com.github.badoualy.telegram.tl.StreamUtils.writeInt;
-import static com.github.badoualy.telegram.tl.StreamUtils.writeString;
-import static com.github.badoualy.telegram.tl.StreamUtils.writeTLObject;
-import static com.github.badoualy.telegram.tl.TLObjectUtils.SIZE_CONSTRUCTOR_ID;
+import static com.github.badoualy.telegram.tl.TLObjectUtils.*;
 import static com.github.badoualy.telegram.tl.TLObjectUtils.SIZE_INT32;
-import static com.github.badoualy.telegram.tl.TLObjectUtils.computeTLStringSerializedSize;
 
-/**
- * @author Yannick Badoual yann.badoual@gmail.com
- * @see <a href="http://github.com/badoualy/kotlogram">http://github.com/badoualy/kotlogram</a>
- */
-public class TLPhotoSize extends TLAbsPhotoSize {
+public class TLVideoSize extends TLObject {
 
-    public static final int CONSTRUCTOR_ID = 0x75c78e60;
+    public static final int CONSTRUCTOR_ID = 0xde33b094;
+
+    protected int flags;
+
+    protected String type;
 
     protected int w;
 
@@ -30,16 +26,24 @@ public class TLPhotoSize extends TLAbsPhotoSize {
 
     protected int size;
 
-    private final String _constructor = "photoSize#75c78e60";
+    protected Double videoStartTs;
 
-    public TLPhotoSize() {
+    private final String _constructor = "videoSize#de33b094";
+
+    public TLVideoSize() {
     }
 
-    public TLPhotoSize(String type, TLAbsFileLocation location, int w, int h, int size) {
+    public TLVideoSize(String type, int w, int h, int size, double videoStartTs) {
         this.type = type;
         this.w = w;
         this.h = h;
         this.size = size;
+        this.videoStartTs = videoStartTs;
+    }
+
+    private void computeFlags() {
+        flags = 0;
+        flags = videoStartTs != null ? (flags | 1) : (flags & ~1);
     }
 
     @Override
@@ -48,24 +52,36 @@ public class TLPhotoSize extends TLAbsPhotoSize {
         writeInt(w, stream);
         writeInt(h, stream);
         writeInt(size, stream);
+        if ((flags & 1) != 0) {
+            if (videoStartTs == null) throwNullFieldException("videoStartTs", flags);
+            writeDouble(videoStartTs, stream);
+        }
     }
 
     @Override
     @SuppressWarnings({"unchecked", "SimplifiableConditionalExpression"})
     public void deserializeBody(InputStream stream, TLContext context) throws IOException {
+        flags = readInt(stream);
         type = readTLString(stream);
         w = readInt(stream);
         h = readInt(stream);
         size = readInt(stream);
+        videoStartTs = (flags & 1) != 0 ? readDouble(stream) : null;
     }
 
     @Override
     public int computeSerializedSize() {
+        computeFlags();
         int size = SIZE_CONSTRUCTOR_ID;
+        size += SIZE_INT32;
         size += computeTLStringSerializedSize(type);
         size += SIZE_INT32;
         size += SIZE_INT32;
         size += SIZE_INT32;
+        if ((flags & 1) != 0) {
+            if (videoStartTs == null) throwNullFieldException("videoStartTs", flags);
+            size += SIZE_DOUBLE;
+        }
         return size;
     }
 

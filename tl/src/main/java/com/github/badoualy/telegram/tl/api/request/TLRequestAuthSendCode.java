@@ -82,9 +82,7 @@ public class TLRequestAuthSendCode extends TLMethod<TLSentCode> {
 
         writeInt(flags, stream);
         writeString(phoneNumber, stream);
-        if ((flags & 1) != 0) {
-            writeBoolean(currentNumber, stream);
-        }
+
         writeInt(apiId, stream);
         writeString(apiHash, stream);
     }
