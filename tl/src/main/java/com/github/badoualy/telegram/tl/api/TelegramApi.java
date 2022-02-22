@@ -136,7 +136,7 @@ public interface TelegramApi {
 
     TLBool authCancelCode(String phoneNumber, String phoneCodeHash) throws RpcErrorException, IOException;
 
-    TLAuthorization authCheckPassword(TLBytes passwordHash) throws RpcErrorException, IOException;
+    TLAuthorization authCheckPassword(TLAbsInputCheckPasswordSRP password) throws RpcErrorException, IOException;
 
     TLCheckedPhone authCheckPhone(String phoneNumber) throws RpcErrorException, IOException;
 

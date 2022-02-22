@@ -9,9 +9,12 @@ import com.github.badoualy.telegram.mtproto.auth.AuthResult
 import com.github.badoualy.telegram.mtproto.exception.SecurityException
 import com.github.badoualy.telegram.mtproto.model.DataCenter
 import com.github.badoualy.telegram.mtproto.secure.CryptoUtils
+import com.github.badoualy.telegram.mtproto.secure.CryptoUtils.*
 import com.github.badoualy.telegram.mtproto.time.MTProtoTimer
+import com.github.badoualy.telegram.tl.ByteBufferUtils.writeInt
 import com.github.badoualy.telegram.tl.api.*
 import com.github.badoualy.telegram.tl.api.account.TLPassword
+import com.github.badoualy.telegram.tl.api.account.TLPasswordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow
 import com.github.badoualy.telegram.tl.api.auth.TLAuthorization
 import com.github.badoualy.telegram.tl.api.request.*
 import com.github.badoualy.telegram.tl.api.upload.TLAbsFile
@@ -21,13 +24,19 @@ import com.github.badoualy.telegram.tl.core.TLBytes
 import com.github.badoualy.telegram.tl.core.TLMethod
 import com.github.badoualy.telegram.tl.core.TLObject
 import com.github.badoualy.telegram.tl.exception.RpcErrorException
+import com.sun.crypto.provider.PBKDF2HmacSHA1Factory
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
 import java.io.IOException
 import java.io.OutputStream
+import java.math.BigInteger
+import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
+import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.TimeoutException
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 internal class DefaultTelegramClient internal constructor(val application: TelegramApp, val apiStorage: TelegramApiStorage,
                                                           val updateCallback: UpdateCallback?,
@@ -298,8 +307,8 @@ internal class DefaultTelegramClient internal constructor(val application: Teleg
     override fun authCheckPassword(password: String): TLAuthorization {
         val tlPassword = accountGetPassword() as? TLPassword
                 ?: throw RpcErrorException(400, "NO_PASSWORD")
-        val passwordHash = CryptoUtils.encodePasswordHash(tlPassword.currentSalt.data, password)
-        return executeRpcQuery(TLRequestAuthCheckPassword(TLBytes(passwordHash)))
+        val inputPasswordSRP = calculateInputCheckPasswordSRP(tlPassword, password)
+        return executeRpcQuery(TLRequestAuthCheckPassword(inputPasswordSRP))
     }
 
     @Throws(RpcErrorException::class, IOException::class)
@@ -379,6 +388,50 @@ internal class DefaultTelegramClient internal constructor(val application: Teleg
                 exportedHandlerTimeoutMap.remove(dcId)
             }
         }
+    }
+
+    private fun calculateInputCheckPasswordSRP(tlPassword: TLPassword, inputPassword: String) : TLInputCheckPasswordSRP? =
+        (tlPassword.currentAlgo as? TLPasswordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow)?.let { algo ->
+            val buffer = ByteBuffer.allocate(4)
+            writeInt(algo.g, buffer)
+            val k = SHA256(concat(algo.p.data, buffer.array()))
+            val x = PH2(inputPassword.toByteArray(), algo.salt1.data, algo.salt2.data)
+            val bigIntA = loadBigInt(tlPassword.secureRandom.data)
+            val bigIntG = loadBigInt(algo.g.toByteArray())
+            val bigIntP = loadBigInt(algo.p.data)
+            val g_a = fromBigInt(bigIntG.modPow(bigIntA, bigIntP))
+            val u = SHA256(concat(g_a, tlPassword.srpB.data))
+            val v = bigIntG.modPow(loadBigInt(x), bigIntP)
+            val k_v = loadBigInt(k).multiply(v).mod(bigIntP)
+            val t = loadBigInt(tlPassword.srpB.data).subtract(k_v).mod(bigIntP)
+            val uMultiplyX = loadBigInt(u).multiply(loadBigInt(x))
+            val s_a = t.modPow(bigIntA.add(uMultiplyX), bigIntP)
+            val k_a = SHA256(fromBigInt(s_a))
+            val hashPxorHashG = xor(SHA256(algo.p.data), SHA256(algo.g.toByteArray()))
+            val salt1Hash = SHA256(algo.salt1.data)
+            val salt2Hash = SHA256(algo.salt2.data)
+            val M1 = SHA256(concat(hashPxorHashG, salt1Hash, salt2Hash, g_a, tlPassword.srpB.data, k_a))
+            TLInputCheckPasswordSRP(tlPassword.srpId, TLBytes(g_a), TLBytes(M1))
+    }
+
+    private fun SH(bytes: ByteArray, salt:ByteArray): ByteArray = SHA256(concat(salt, bytes, salt))
+
+    private fun PH1(password: ByteArray, salt1: ByteArray, salt2: ByteArray) = SH(SH(password, salt1), salt2)
+
+    private fun PH2(password: ByteArray, salt1: ByteArray, salt2: ByteArray) : ByteArray {
+        val string = String(PH1(password, salt1, salt2))
+        val keySpec = PBEKeySpec(string.toCharArray(), salt1, 100000, 2048)
+        val a = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+        val result = a.generateSecret(keySpec).toString().toByteArray(Charset.defaultCharset())
+        return SH(result, salt2)
+    }
+
+    private fun Int.toByteArray() : ByteArray {
+        val buffer = ByteArray(4)
+        for (i in 0..3) {
+            buffer[i] = (this shr (i*8)).toByte()
+        }
+        return buffer
     }
 
     override fun onUpdates(update: TLAbsUpdates) {

@@ -230,8 +230,8 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     }
 
     @Override
-    public TLAuthorization authCheckPassword(TLBytes passwordHash) throws RpcErrorException, IOException {
-        return (TLAuthorization) executeRpcQuery(new TLRequestAuthCheckPassword(passwordHash));
+    public TLAuthorization authCheckPassword(TLAbsInputCheckPasswordSRP password) throws RpcErrorException, IOException {
+        return (TLAuthorization) executeRpcQuery(new TLRequestAuthCheckPassword(password));
     }
 
     @Override

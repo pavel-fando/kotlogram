@@ -80,7 +80,7 @@ interface TelegramClient : TelegramApi {
     fun authCheckPassword(password: String): TLAuthorization
 
     @Deprecated("Use authCheckPassword for more convenience", ReplaceWith("authCheckPassword()"))
-    override fun authCheckPassword(passwordHash: TLBytes?): TLAuthorization
+    override fun authCheckPassword(password: TLAbsInputCheckPasswordSRP): TLAuthorization
 
     @Throws(RpcErrorException::class, IOException::class)
     override fun <T : TLObject?> invokeWithLayer(layer: Int, query: TLMethod<T>?): T

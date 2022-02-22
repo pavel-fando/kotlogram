@@ -14,7 +14,6 @@ public class TLChatBannedRights extends TLObject {
 
 
     public static final int CONSTRUCTOR_ID = 0x9f120418;
-    private final String _constructor = "chatBannedRights#9f120418";
     protected int flags;
     protected boolean viewMessages;
     protected boolean sendMessages;
@@ -29,6 +28,8 @@ public class TLChatBannedRights extends TLObject {
     protected boolean inviteUsers;
     protected boolean pinMessages;
     protected int untilDate;
+
+    private final String _constructor = "chatBannedRights#9f120418";
 
     public TLChatBannedRights() {
     }
