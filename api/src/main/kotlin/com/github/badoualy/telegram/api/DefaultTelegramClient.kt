@@ -8,10 +8,8 @@ import com.github.badoualy.telegram.mtproto.auth.AuthKeyCreation
 import com.github.badoualy.telegram.mtproto.auth.AuthResult
 import com.github.badoualy.telegram.mtproto.exception.SecurityException
 import com.github.badoualy.telegram.mtproto.model.DataCenter
-import com.github.badoualy.telegram.mtproto.secure.CryptoUtils
 import com.github.badoualy.telegram.mtproto.secure.CryptoUtils.*
 import com.github.badoualy.telegram.mtproto.time.MTProtoTimer
-import com.github.badoualy.telegram.tl.ByteBufferUtils.writeInt
 import com.github.badoualy.telegram.tl.api.*
 import com.github.badoualy.telegram.tl.api.account.TLPassword
 import com.github.badoualy.telegram.tl.api.account.TLPasswordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow
@@ -24,19 +22,16 @@ import com.github.badoualy.telegram.tl.core.TLBytes
 import com.github.badoualy.telegram.tl.core.TLMethod
 import com.github.badoualy.telegram.tl.core.TLObject
 import com.github.badoualy.telegram.tl.exception.RpcErrorException
-import com.sun.crypto.provider.PBKDF2HmacSHA1Factory
 import org.slf4j.LoggerFactory
 import org.slf4j.MarkerFactory
 import java.io.IOException
 import java.io.OutputStream
 import java.math.BigInteger
-import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
 import java.nio.charset.Charset
+import java.security.SecureRandom
 import java.util.*
 import java.util.concurrent.TimeoutException
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
 
 internal class DefaultTelegramClient internal constructor(val application: TelegramApp, val apiStorage: TelegramApiStorage,
                                                           val updateCallback: UpdateCallback?,
@@ -392,25 +387,31 @@ internal class DefaultTelegramClient internal constructor(val application: Teleg
 
     private fun calculateInputCheckPasswordSRP(tlPassword: TLPassword, inputPassword: String) : TLInputCheckPasswordSRP? =
         (tlPassword.currentAlgo as? TLPasswordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow)?.let { algo ->
-            val buffer = ByteBuffer.allocate(4)
-            writeInt(algo.g, buffer)
-            val k = SHA256(concat(algo.p.data, buffer.array()))
-            val x = PH2(inputPassword.toByteArray(), algo.salt1.data, algo.salt2.data)
-            val bigIntA = loadBigInt(tlPassword.secureRandom.data)
-            val bigIntG = loadBigInt(algo.g.toByteArray())
-            val bigIntP = loadBigInt(algo.p.data)
-            val g_a = fromBigInt(bigIntG.modPow(bigIntA, bigIntP))
-            val u = SHA256(concat(g_a, tlPassword.srpB.data))
-            val v = bigIntG.modPow(loadBigInt(x), bigIntP)
-            val k_v = loadBigInt(k).multiply(v).mod(bigIntP)
-            val t = loadBigInt(tlPassword.srpB.data).subtract(k_v).mod(bigIntP)
-            val uMultiplyX = loadBigInt(u).multiply(loadBigInt(x))
-            val s_a = t.modPow(bigIntA.add(uMultiplyX), bigIntP)
-            val k_a = SHA256(fromBigInt(s_a))
-            val hashPxorHashG = xor(SHA256(algo.p.data), SHA256(algo.g.toByteArray()))
+            val clientSalt = algo.salt1.data
+            val serverSalt = algo.salt2.data
+            val g = BigInteger.valueOf(algo.g.toLong())
+            val gForHash = fromBigInt(g).padStart(256, 0.toChar())
+            val p = loadBigInt(algo.p.data)
+            val pForHash = algo.p.data.padStart(256, 0.toChar())
+            val B = tlPassword
+            val srpBForHash = tlPassword.srpB.data.padStart(256, 0.toChar())
+            val x = loadBigInt(PH2(inputPassword.toByteArray(Charset.defaultCharset()), algo.salt1.data, algo.salt2.data))
+            val v = g.modPow(x, p)
+            val k = loadBigInt(SHA256(concat(pForHash, gForHash)))
+            val k_v = k.multiply(v).mod(p)
+            val bigIntA = BigInteger(2048, SecureRandom())
+            val g_a = fromBigInt(g.modPow(bigIntA, p)).padStart(256, 0.toChar())
+            val t = loadBigInt(tlPassword.srpB.data).mod(p).subtract(k_v)
+            val u = loadBigInt(SHA256(concat(g_a, srpBForHash)))
+            val uMultiplyX = u.multiply(x)
+            val s_a = fromBigInt(t.modPow(bigIntA.add(uMultiplyX), p)).padStart(256, 0.toChar())
+            val k_a = SHA256(s_a)
+            val hashP = SHA256(pForHash)
+            val hashG = SHA256(gForHash)
+            val hashPxorHashG = xor(hashP, hashG)
             val salt1Hash = SHA256(algo.salt1.data)
             val salt2Hash = SHA256(algo.salt2.data)
-            val M1 = SHA256(concat(hashPxorHashG, salt1Hash, salt2Hash, g_a, tlPassword.srpB.data, k_a))
+            val M1 = SHA256(concat(hashPxorHashG, salt1Hash, salt2Hash, g_a, srpBForHash, k_a))
             TLInputCheckPasswordSRP(tlPassword.srpId, TLBytes(g_a), TLBytes(M1))
     }
 
@@ -419,20 +420,13 @@ internal class DefaultTelegramClient internal constructor(val application: Teleg
     private fun PH1(password: ByteArray, salt1: ByteArray, salt2: ByteArray) = SH(SH(password, salt1), salt2)
 
     private fun PH2(password: ByteArray, salt1: ByteArray, salt2: ByteArray) : ByteArray {
-        val string = String(PH1(password, salt1, salt2))
-        val keySpec = PBEKeySpec(string.toCharArray(), salt1, 100000, 2048)
-        val a = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
-        val result = a.generateSecret(keySpec).toString().toByteArray(Charset.defaultCharset())
+        val bytes = PH1(password, salt1, salt2)
+        val result = getPBKDF2Hash(bytes, salt1)
         return SH(result, salt2)
     }
 
-    private fun Int.toByteArray() : ByteArray {
-        val buffer = ByteArray(4)
-        for (i in 0..3) {
-            buffer[i] = (this shr (i*8)).toByte()
-        }
-        return buffer
-    }
+    private fun ByteArray.padStart(length: Int, padChar: Char) = String(this, Charset.defaultCharset()).padStart(length, padChar).toByteArray(
+        Charset.defaultCharset())
 
     override fun onUpdates(update: TLAbsUpdates) {
         when (update) {
@@ -448,6 +442,17 @@ internal class DefaultTelegramClient internal constructor(val application: Teleg
         // Warn that the client should refresh manually
             is TLUpdatesTooLong -> updateCallback?.onUpdateTooLong(this)
         }
+    }
+    private fun bytesToHex(hash: ByteArray): String {
+        val hexString = StringBuilder(2 * hash.size)
+        for (i in hash.indices) {
+            val hex = Integer.toHexString(0xff and hash[i].toInt())
+            if (hex.length == 1) {
+                hexString.append('0')
+            }
+            hexString.append(hex)
+        }
+        return hexString.toString()
     }
 
     companion object {

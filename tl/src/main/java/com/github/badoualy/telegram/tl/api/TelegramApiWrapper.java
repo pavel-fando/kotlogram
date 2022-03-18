@@ -288,7 +288,7 @@ public abstract class TelegramApiWrapper implements TelegramApi {
     @Override
     public TLSentCode authSendCode(boolean allowFlashcall, String phoneNumber, boolean currentNumber, int apiId, String apiHash) throws RpcErrorException, IOException {
         return (TLSentCode) executeRpcQuery(
-                new TLRequestAuthSendCode(allowFlashcall, phoneNumber, currentNumber, apiId, apiHash));
+                new TLRequestAuthSendCode(phoneNumber, apiId, apiHash, new TLCodeSettings(allowFlashcall, currentNumber, false)));
     }
 
     @Override

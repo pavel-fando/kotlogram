@@ -122,26 +122,8 @@ interface TelegramClient : TelegramApi {
     /** Convenience method to downloadSync a chat photo */
     @Throws(RpcErrorException::class, IOException::class)
     fun getChatPhoto(chat: TLAbsChat, big: Boolean = true): TLFile? {
-        //TODO: add request request to get photo oject by its id
+        //TODO: add request request to get photo object by its id
         return null
-        /*val chatPhoto = when (chat) {
-            is TLChat -> chat.photo
-            is TLChannel -> chat.photo
-            is TLChatEmpty, is TLChatForbidden -> null
-            else -> null
-        } ?: return null
-
-        val photoLocation = (when (chatPhoto) {
-            is TLChatPhoto -> if (big) chatPhoto else chatPhoto.photoSmall
-            else -> null
-        } ?: return null) as? TLFileLocation ?: return null
-
-        val inputLocation = TLInputFileLocation(photoLocation.volumeId, photoLocation.localId,
-                                                photoLocation.secret)
-        val request = TLRequestUploadGetFile(inputLocation, 0, 0)
-        return executeRpcQuery(request, photoLocation.dcId)as? TLFile
-                // TODO: handle CDN
-                ?: throw IOException("Unhandled CDN redirection")*/
     }
 
     /** Convenience method to downloadSync a channel photo */

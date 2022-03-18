@@ -68,7 +68,6 @@ public class TLRequestContactsImportContacts extends TLMethod<TLImportedContacts
     public int computeSerializedSize() {
         int size = SIZE_CONSTRUCTOR_ID;
         size += contacts.computeSerializedSize();
-        size += SIZE_BOOLEAN;
         return size;
     }
 

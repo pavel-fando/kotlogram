@@ -680,5 +680,6 @@ public class TLApiContext extends TLContext {
         registerClass(TLSecurePasswordKdfAlgoUnknown.CONSTRUCTOR_ID, TLSecurePasswordKdfAlgoUnknown.class);
         registerClass(TLInputCheckPasswordEmpty.CONSTRUCTOR_ID, TLInputCheckPasswordEmpty.class);
         registerClass(TLInputCheckPasswordSRP.CONSTRUCTOR_ID, TLInputCheckPasswordSRP.class);
+        registerClass(TLCodeSettings.CONSTRUCTOR_ID, TLCodeSettings.class);
     }
 }
